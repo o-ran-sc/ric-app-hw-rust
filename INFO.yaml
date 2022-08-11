@@ -1,0 +1,58 @@
+---
+project: 'ric_app_hw_rust'
+project_creation_date: '2022-08-02'
+project_category: ''
+lifecycle_state: 'Incubation'
+project_lead: &oran_ric_app_hw_rust_ptl
+    name: 'Sunil Singh'
+    email: 'singh.sunil@hcl.com'
+    id: 'singh.sunil'
+    company: 'HCL'
+    timezone: ''
+primary_contact: *oran_ric_app_hw_rust_ptl
+issue_tracking:
+    type: 'jira'
+    url: 'https://jira.example.org/projects/'
+    key: 'hw_rust'
+mailing_list:
+    type: 'groups.io'
+    url: 'technical-discuss@lists.example.org'
+    tag: '[]'
+realtime_discussion:
+    type: 'irc'
+    server: 'freenode.net'
+    channel: '#oran'
+meetings:
+    - type: 'gotomeeting+irc'
+      agenda: 'https://wiki.example.org/display/'
+      url: ''
+      server: 'freenode.net'
+      channel: '#oran'
+      repeats: ''
+      time: ''
+repositories:
+    - ric-app/hw-rust
+committers:
+    - <<: *oran_ric_app_hw_rust_ptl
+    - name: 'Sunil Singh'
+      email: 'singh.sunil@hcl.com'
+      company: 'HCL'
+      id: 'singh.sunil'
+    - name: 'Bryan Russett'
+      email: 'bryan@caur.us'
+      company: 'CAURUS'
+      id: 'bryanr'
+    - name: 'Johannes Becker'
+      email: 'johannes@caur.us'
+      company: 'CAURUS'
+      id: 'jkbecker'
+tsc:
+    # yamllint disable rule:line-length
+    approval: 'https://wiki.o-ran-sc.org/display/TOC'
+    changes:
+        - type: 'promotion'
+          name: 'Bryan Russett'
+          link: ''
+        - type: 'promotion'
+          name: 'Johannes Becker'
+          link: ''
