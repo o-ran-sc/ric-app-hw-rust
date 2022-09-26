@@ -1,0 +1,7 @@
+Code-Review+2: Johannes Becker <johannes@caur.us>
+Verified+1: Johannes Becker <johannes@caur.us>
+Submitted-by: Johannes Becker <johannes@caur.us>
+Submitted-at: Mon, 26 Sep 2022 16:36:51 +0000
+Reviewed-on: https://gerrit.o-ran-sc.org/r/c/ric-app/hw-rust/+/8864
+Project: ric-app/hw-rust
+Branch: refs/heads/master
