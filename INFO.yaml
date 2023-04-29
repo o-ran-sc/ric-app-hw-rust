@@ -48,7 +48,7 @@ committers:
       email: 'gabhijit@iitbombay.org'
       company: 'individual'
       id: 'gabhijit'
-      timezone: 'Unknown/Unknown'
+      timezone: 'Asia/Kolkata'
 tsc:
     # yamllint disable rule:line-length
     approval: 'https://wiki.o-ran-sc.org/display/TOC'
