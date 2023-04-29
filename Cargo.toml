@@ -1,0 +1,27 @@
+[package]
+name = "hw-rust"
+version = "0.1.0"
+edition = "2018"
+description = "A Hello World Rust xApp using the Xapp Rust SDK (xapp-frame-rust) from ORAN SC."
+readme = "README.md"
+license-file = "LICENSE.txt"
+keywords = ["o-ran", "xapp"]
+categories = ["development-tools", "network-programming"]
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+env_logger = "*"
+# TODO : Add a proper tag when we are ready to release.
+# And removed the commented dependencies in local path used during testing
+xapp = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
+#xapp = { path = "../xapp-frame-rust/xapp" }
+rmr = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
+#rmr = { path = "../xapp-frame-rust/rmr" }
+
+
+[[bin]]
+name = "hw-rust"
+path = "src/hw-rust.rs"
+
