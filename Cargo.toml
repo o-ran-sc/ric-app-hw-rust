@@ -12,13 +12,22 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+log = "*"
 env_logger = "*"
 # TODO : Add a proper tag when we are ready to release.
-# And removed the commented dependencies in local path used during testing
+# And remove the commented dependencies in local path used during testing
 xapp = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
 #xapp = { path = "../xapp-frame-rust/xapp" }
 rmr = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
 #rmr = { path = "../xapp-frame-rust/rmr" }
+ric-subscriptions = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
+#ric-subscriptions = { path = "../xapp-frame-rust/api" }
+rnib = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
+#rnib = { path = "../xapp-frame-rust/rnib" }
+
+reqwest = { version = "0.11", features = [ "multipart", "json" , "blocking"] }
+serde_json = { version = "1.0" }
+
 
 
 [[bin]]
