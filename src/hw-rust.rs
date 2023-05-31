@@ -14,6 +14,8 @@
 //   limitations under the License.
 // ==================================================================================
 
+use axum::{routing::get, Json, Router};
+
 use ric_subscriptions::models::{SubscriptionParams, SubscriptionParamsClientEndpoint};
 use rmr::{RMRClient, RMRError, RMRMessageBuffer};
 use rnib::entities::NbIdentity;
@@ -108,6 +110,23 @@ impl HwApp {
     }
 }
 
+// TODO: This is a simple Readyness and Liveness probe handler. For the current release this is
+// okay, at some point of time, we will be moving all the framework actions to their `async` parts
+// and then this server will be handled by the `framework`.
+#[tokio::main]
+async fn run_ready_live_server() {
+    log::info!("Starting Ready and Alive handlers!");
+
+    let webapp = Router::new()
+        .route("/ric/v1/health/ready", get(|| async { Json("OK") }))
+        .route("/ric/v1/health/alive", get(|| async { Json("OK") }));
+
+    axum::Server::bind(&"0.0.0.0:8080".parse().unwrap())
+        .serve(webapp.into_make_service())
+        .await
+        .unwrap();
+}
+
 fn main() -> std::io::Result<()> {
     let env = env_logger::Env::default().filter_or("MY_LOG_LEVEL", "info");
     env_logger::init_from_env(env);
@@ -145,11 +164,17 @@ fn main() -> std::io::Result<()> {
                 hw_xapp.xapp.stop();
             }
 
+            log::info!("Xapp Ready. Waiting for RMR Messages to process!");
+
+            std::thread::spawn(|| {
+                run_ready_live_server();
+            })
+            .join()
+            .expect("Thread Panicked!");
+
             break;
         }
     }
-
-    log::info!("Xapp Ready. Waiting for RMR Messages to process!");
 
     hw_xapp.xapp.join();
 
