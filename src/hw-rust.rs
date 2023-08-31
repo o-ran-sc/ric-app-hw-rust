@@ -44,7 +44,7 @@ fn rmr_message_handler_noop(
 }
 
 // FIXME: Hard coded right now
-const SUB_MGR_HOST: &'static str = "http://service-ricplt-submgr-http.ricplt:3800";
+const SUB_MGR_HOST: &'static str = "http://service-ricplt-submgr-http.ricplt:8088";
 const SUBSCRIPTION_URL: &'static str = "ric/v1/subscriptions";
 
 struct HwApp {
@@ -54,7 +54,7 @@ struct HwApp {
 impl HwApp {
     fn send_subscription(&self, meid: &str) -> std::io::Result<()> {
         let client = SubscriptionParamsClientEndpoint {
-            host: Some(String::from("service-ricxapp-hw-go-rmr.ricxapp")),
+            host: Some(String::from("service-ricxapp-hw-rust-rmr.ricxapp")),
             http_port: Some(8080),
             rmr_port: Some(4560),
         };
@@ -74,14 +74,24 @@ impl HwApp {
 
         let path = format!("{}/{}", SUB_MGR_HOST, SUBSCRIPTION_URL);
 
-        let response = req_client.post(path).body(json).send().map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error sending request: {}", e),
-            )
-        })?;
+        let response = req_client
+            .post(path)
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body(json)
+            .send()
+            .map_err(|e| {
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Error sending request: {}", e),
+                )
+            })?;
 
         if response.status().is_success() {
+            log::info!(
+                "Subscription Response Code: {}, Body: {}",
+                response.status(),
+                response.text().unwrap()
+            );
             Ok(())
         } else {
             Err(std::io::Error::new(
@@ -99,6 +109,8 @@ impl HwApp {
         log::info!("HwApp is Ready! Getting connected nodes and subscribing for notifications!");
         let nodebs = self.get_nodeb_ids()?;
 
+        // TODO: What if 'some subscriptions fail' but not others, we need to unsubscribe those
+        // which we have subscribed.
         for nodeb in nodebs {
             log::info!(
                 "Sending Subscription Request for Node: '{}",
@@ -159,9 +171,12 @@ fn main() -> std::io::Result<()> {
                 break;
             }
         } else {
+            // RMR is ready: Let's start our 'ready' and 'live' server thread.
+
             if let Err(error) = hw_xapp.ready_fn() {
                 log::error!("XApp Ready Function returned error: {}.", error);
                 hw_xapp.xapp.stop();
+                break;
             }
 
             log::info!("Xapp Ready. Waiting for RMR Messages to process!");
