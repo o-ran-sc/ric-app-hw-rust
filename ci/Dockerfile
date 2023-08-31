@@ -15,8 +15,6 @@ RUN wget --content-disposition https://packagecloud.io/o-ran-sc/staging/packages
 ENV PATH=/usr/local/cargo/bin:$PATH
 
 RUN mkdir -p /ws
-RUN mkdir -p /src
-RUN mkdir -p /config
 WORKDIR "/ws"
 
 # Copy

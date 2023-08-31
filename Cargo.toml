@@ -21,14 +21,18 @@ xapp = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
 rmr = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
 #rmr = { path = "../xapp-frame-rust/rmr" }
 ric-subscriptions = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
-#ric-subscriptions = { path = "../xapp-frame-rust/api" }
+#ric-subscriptions = { path = "../xapp-frame-rust/subscription-api" }
 rnib = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
 #rnib = { path = "../xapp-frame-rust/rnib" }
+registration-api = { git = "https://gerrit.o-ran-sc.org/r/ric-plt/xapp-frame-rust" }
+#registration-api = { path = "../xapp-frame-rust/registration-api" }
+
 
 reqwest = { version = "0.11", default-features = false, features = [ "rustls-tls", "multipart", "json" , "blocking"] }
+serde = { version = "1.0.163" , features = ["derive"] }
 serde_json = { version = "1.0" }
 axum = { version = "0.6" }
-tokio = { version = "1", features = [ "macros" ] }
+tokio = { version = "1", features = [ "macros", "fs" ] }
 
 
 [[bin]]
