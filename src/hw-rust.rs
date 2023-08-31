@@ -16,13 +16,20 @@
 
 use axum::{routing::get, Json, Router};
 
-use ric_subscriptions::models::{SubscriptionParams, SubscriptionParamsClientEndpoint};
+use ric_subscriptions::models::{
+    action_to_be_setup::ActionType,
+    subsequent_action::{SubsequentActionType, TimeToWait},
+    ActionToBeSetup, SubscriptionDetail, SubscriptionParams, SubscriptionParamsClientEndpoint,
+    SubsequentAction,
+};
 use rmr::{RMRClient, RMRError, RMRMessageBuffer};
 use rnib::entities::NbIdentity;
 use xapp::XApp;
 
 const RIC_HEALTH_CHECK_REQ: i32 = 100;
 const RIC_HEALTH_CHECK_RES: i32 = 101;
+
+const EVENT_TRIGGERS: [i32; 4] = [1, 2, 3, 4];
 
 fn handle_ric_health_check_request(
     msg: &mut RMRMessageBuffer,
@@ -44,7 +51,7 @@ fn rmr_message_handler_noop(
 }
 
 // FIXME: Hard coded right now
-const SUB_MGR_HOST: &'static str = "http://service-ricplt-submgr-http.ricplt:3800";
+const SUB_MGR_HOST: &'static str = "http://service-ricplt-submgr-http.ricplt:8088";
 const SUBSCRIPTION_URL: &'static str = "ric/v1/subscriptions";
 
 struct HwApp {
@@ -54,9 +61,25 @@ struct HwApp {
 impl HwApp {
     fn send_subscription(&self, meid: &str) -> std::io::Result<()> {
         let client = SubscriptionParamsClientEndpoint {
-            host: Some(String::from("service-ricxapp-hw-go-rmr.ricxapp")),
+            host: Some(String::from("service-ricxapp-hw-rust-rmr.ricxapp")),
             http_port: Some(8080),
             rmr_port: Some(4560),
+        };
+
+        let action = ActionToBeSetup {
+            action_id: 1,
+            action_type: ActionType::Report,
+            action_definition: Some(vec![1, 2, 3, 4]),
+            subsequent_action: Some(Box::new(SubsequentAction {
+                subsequent_action_type: SubsequentActionType::Continue,
+                time_to_wait: TimeToWait::W10ms,
+            })),
+        };
+
+        let subscription_detail = SubscriptionDetail {
+            xapp_event_instance_id: 1235_u32,
+            event_triggers: EVENT_TRIGGERS.to_vec(),
+            action_to_be_setup_list: vec![action],
         };
 
         let sub_params = SubscriptionParams {
@@ -64,7 +87,7 @@ impl HwApp {
             meid: meid.to_string(),
             ran_function_id: 1,
             e2_subscription_directives: None,
-            subscription_details: vec![],
+            subscription_details: vec![subscription_detail],
             subscription_id: None,
         };
 
@@ -74,14 +97,24 @@ impl HwApp {
 
         let path = format!("{}/{}", SUB_MGR_HOST, SUBSCRIPTION_URL);
 
-        let response = req_client.post(path).body(json).send().map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error sending request: {}", e),
-            )
-        })?;
+        let response = req_client
+            .post(path)
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body(json)
+            .send()
+            .map_err(|e| {
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Error sending request: {}", e),
+                )
+            })?;
 
         if response.status().is_success() {
+            log::info!(
+                "Subscription Response Code: {}, Body: {}",
+                response.status(),
+                response.text().unwrap()
+            );
             Ok(())
         } else {
             Err(std::io::Error::new(
@@ -99,6 +132,8 @@ impl HwApp {
         log::info!("HwApp is Ready! Getting connected nodes and subscribing for notifications!");
         let nodebs = self.get_nodeb_ids()?;
 
+        // TODO: What if 'some subscriptions fail' but not others, we need to unsubscribe those
+        // which we have subscribed.
         for nodeb in nodebs {
             log::info!(
                 "Sending Subscription Request for Node: '{}",
@@ -159,9 +194,12 @@ fn main() -> std::io::Result<()> {
                 break;
             }
         } else {
+            // RMR is ready: Let's start our 'ready' and 'live' server thread.
+
             if let Err(error) = hw_xapp.ready_fn() {
                 log::error!("XApp Ready Function returned error: {}.", error);
                 hw_xapp.xapp.stop();
+                break;
             }
 
             log::info!("Xapp Ready. Waiting for RMR Messages to process!");
