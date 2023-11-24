@@ -24,8 +24,6 @@ use ric_subscriptions::models::{
     SubsequentAction,
 };
 
-use registration_api::models::RegisterRequest;
-
 use rmr::{RMRClient, RMRError, RMRMessageBuffer};
 use rnib::entities::NbIdentity;
 use xapp::XApp;
@@ -74,13 +72,6 @@ fn rmr_message_handler_noop(
     Ok(())
 }
 
-// FIXME: Hard coded right now
-const SUB_MGR_HOST: &'static str = "http://service-ricplt-submgr-http.ricplt:8088";
-const SUBSCRIPTION_URL: &'static str = "ric/v1/subscriptions";
-
-const APP_MGR_HOST: &'static str = "http://service-ricplt-appmgr-http.ricplt:8080";
-const REGISTRATION_URL: &'static str = "ric/v1/register";
-
 struct HwApp {
     xapp: XApp,
 }
@@ -120,105 +111,25 @@ impl HwApp {
 
         let json = serde_json::to_string(&sub_params)?;
 
-        let req_client = reqwest::blocking::Client::new();
-
-        let path = format!("{}/{}", SUB_MGR_HOST, SUBSCRIPTION_URL);
-
-        let response = req_client
-            .post(path)
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body(json)
-            .send()
-            .map_err(|e| {
-                std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Error sending request: {}", e),
-                )
-            })?;
-
-        if response.status().is_success() {
-            log::info!(
-                "Subscription Response Code: {}, Body: {}",
-                response.status(),
-                response.text().unwrap()
-            );
-            Ok(())
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error : {}", response.status()),
-            ))
-        }
+        self.xapp.xapp_send_subscription(&json).map_err(|e| {
+            std::io::Error::new(std::io::ErrorKind::Other, format!("XappError: {}", e))
+        })
     }
 
-    fn send_registration(&self) -> std::io::Result<()> {
-        let http_host =
-            std::env::var("SERVICE_RICXAPP_HW_RUST_HTTP_SERVICE_HOST").expect("Env Not Set!");
-        let http_port =
-            std::env::var("SERVICE_RICXAPP_HW_RUST_HTTP_SERVICE_PORT").expect("Env Not Set!");
-        let http_endpoint = format!("{}:{}", http_host, http_port);
-
-        let rmr_host =
-            std::env::var("SERVICE_RICXAPP_HW_RUST_RMR_SERVICE_HOST").expect("Env Not Set!");
-        let rmr_port =
-            std::env::var("SERVICE_RICXAPP_HW_RUST_RMR_SERVICE_PORT").expect("Env Not Set!");
-        let rmr_endpoint = format!("{}:{}", rmr_host, rmr_port);
-
-        log::info!(
-            "HTTP Endpoint: {}, RMR Endpoint: {}",
-            http_endpoint,
-            rmr_endpoint
-        );
-
-        let req_client = reqwest::blocking::Client::new();
-        let path = format!("{}/{}", APP_MGR_HOST, REGISTRATION_URL);
-
+    fn send_registration(&mut self) -> std::io::Result<()> {
         let config = std::fs::read_to_string("config/config-file.json").unwrap();
-
-        let reg_request = RegisterRequest {
-            app_name: "hw-rust".to_string(),
-            app_instance_name: "hw-rust".to_string(),
-            app_version: None,
-            config_path: None,
-            config: Some(config),
-            http_endpoint,
-            rmr_endpoint,
-        };
-
-        let json = serde_json::to_string(&reg_request)?;
-
-        let response = req_client
-            .post(path)
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body(json)
-            .send()
+        self.xapp
+            .register_xapp("hw-rust", "hw-rust", &config, None)
             .map_err(|e| {
-                std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Error sending request: {}", e),
-                )
-            })?;
-
-        if response.status().is_success() {
-            log::info!(
-                "Subscription Response Code: {}, Body: {}",
-                response.status(),
-                response.text().unwrap()
-            );
-            Ok(())
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error : {}", response.status()),
-            ))
-        }
+                std::io::Error::new(std::io::ErrorKind::Other, format!("XAppError: {}", e))
+            })
     }
 
     fn get_nodeb_ids(&self) -> std::io::Result<Vec<NbIdentity>> {
         self.xapp.rnib_get_nodeb_ids().map_err(|e| e.into())
     }
 
-    fn ready_fn(&self) -> std::io::Result<()> {
+    fn ready_fn(&mut self) -> std::io::Result<()> {
         log::info!("HwApp RMR Ready! Registering ourself with 'appmgr'.");
         self.send_registration()?;
 
