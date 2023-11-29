@@ -147,7 +147,24 @@ impl HwApp {
                 "Sending Subscription Request for Node: '{}",
                 nodeb.inventory_name
             );
-            self.send_subscription(&nodeb.inventory_name)?;
+
+            let result = self.send_subscription(&nodeb.inventory_name);
+            if result.is_err() {
+                log::error!(
+                    "Error:'{}' Sending Subscritopn for '{}'. Raising Alarm.",
+                    result.err().unwrap(),
+                    nodeb.inventory_name
+                );
+                let result = self.xapp.raise_alarm(
+                    8086,
+                    xapp::AlarmSeverity::Major,
+                    nodeb.inventory_name.clone(),
+                    "Subscription Failed".to_string(),
+                );
+                if result.is_err() {
+                    log::error!("Error: '{}' Raising Alarm", result.err().unwrap());
+                }
+            }
         }
         Ok(())
     }
