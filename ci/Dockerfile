@@ -1,5 +1,5 @@
 # First get the builder image
-FROM rust:1.65-bullseye as xapp-rust-builder
+FROM rust:1-bullseye as xapp-rust-builder
 
 # libclang is a dependency of the bindgen crate. See https://internals.rust-lang.org/t/consider-shipping-libclang-with-rust-toolchain/12241
 RUN apt-get update && apt-get install -y libclang-dev protobuf-compiler redis-server

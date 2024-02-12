@@ -14,8 +14,7 @@
 //   limitations under the License.
 // ==================================================================================
 
-use axum::{routing::get, Json, Router};
-use serde::{Deserialize, Serialize};
+use std::sync::mpsc;
 
 use ric_subscriptions::models::{
     action_to_be_setup::ActionType,
@@ -26,31 +25,12 @@ use ric_subscriptions::models::{
 
 use rmr::{RMRClient, RMRError, RMRMessageBuffer};
 use rnib::entities::NbIdentity;
-use xapp::XApp;
+use xapp::{ConfigMetadata, XApp, XAppConfig};
 
 const RIC_HEALTH_CHECK_REQ: i32 = 100;
 const RIC_HEALTH_CHECK_RES: i32 = 101;
 
 const EVENT_TRIGGERS: [i32; 4] = [1, 2, 3, 4];
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ConfigMetadata {
-    /// Name of the xApp
-    #[serde(rename = "xappName")]
-    pub xapp_name: String,
-    /// Name of the configuration type
-    #[serde(rename = "configType")]
-    pub config_type: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct XAppConfig {
-    #[serde(rename = "metadata")]
-    pub metadata: Box<ConfigMetadata>,
-    /// Configuration in JSON format
-    #[serde(rename = "config")]
-    pub config: serde_json::Value,
-}
 
 fn handle_ric_health_check_request(
     msg: &mut RMRMessageBuffer,
@@ -74,6 +54,7 @@ fn rmr_message_handler_noop(
 
 struct HwApp {
     xapp: XApp,
+    app_rx: mpsc::Receiver<RMRMessageBuffer>,
 }
 
 impl HwApp {
@@ -170,10 +151,8 @@ impl HwApp {
     }
 }
 
-async fn get_config_data() -> Json<Vec<XAppConfig>> {
-    let config_data = tokio::fs::read_to_string("config/config-file.json")
-        .await
-        .unwrap();
+fn get_config_data() -> XAppConfig {
+    let config_data = std::fs::read_to_string("config/config-file.json").unwrap();
 
     let config: serde_json::Value = serde_json::from_str(&config_data).unwrap();
 
@@ -181,50 +160,27 @@ async fn get_config_data() -> Json<Vec<XAppConfig>> {
         xapp_name: "hw-rust".to_string(),
         config_type: "json".to_string(),
     };
-    let xapp_config = XAppConfig {
+
+    XAppConfig {
         metadata: Box::new(metadata),
         config,
-    };
-    Json(vec![xapp_config])
-}
-
-// TODO: This is a simple Readyness and Liveness probe handler. For the current release this is
-// okay, at some point of time, we will be moving all the framework actions to their `async` parts
-// and then this server will be handled by the `framework`.
-#[tokio::main]
-async fn run_ready_live_server() {
-    log::info!("Starting Ready and Alive handlers!");
-
-    let webapp = Router::new()
-        .route("/ric/v1/health/ready", get(|| async { Json("OK") }))
-        .route("/ric/v1/health/alive", get(|| async { Json("OK") }))
-        .route("/ric/v1/config", get(|| get_config_data()));
-
-    axum::Server::bind(&"0.0.0.0:8080".parse().unwrap())
-        .serve(webapp.into_make_service())
-        .await
-        .unwrap();
+    }
 }
 
 fn main() -> std::io::Result<()> {
     let env = env_logger::Env::default().filter_or("MY_LOG_LEVEL", "info");
     env_logger::init_from_env(env);
 
-    // TODO: Get it from the config
-    let xapp = XApp::new("4560", RMRClient::RMRFL_NONE)
+    let config = get_config_data();
+
+    let (app_tx, app_rx) = mpsc::channel();
+
+    let xapp = XApp::from_config(config, app_tx)
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Xapp Init Error."))?;
 
-    let mut hw_xapp = HwApp { xapp };
+    let mut hw_xapp = HwApp { xapp, app_rx };
 
     let mut rmr_ready_wait_counter = 0;
-
-    hw_xapp
-        .xapp
-        .register_handler(12050, rmr_message_handler_noop);
-
-    hw_xapp
-        .xapp
-        .register_handler(RIC_HEALTH_CHECK_REQ, handle_ric_health_check_request);
 
     hw_xapp.xapp.start();
 
@@ -240,10 +196,6 @@ fn main() -> std::io::Result<()> {
         } else {
             // RMR is ready: Let's start our 'ready' and 'live' server thread.
 
-            let ready_live_thread = std::thread::spawn(|| {
-                run_ready_live_server();
-            });
-
             if let Err(error) = hw_xapp.ready_fn() {
                 log::error!("XApp Ready Function returned error: {}.", error);
                 hw_xapp.xapp.stop();
@@ -252,8 +204,40 @@ fn main() -> std::io::Result<()> {
 
             log::info!("Xapp Ready. Waiting for RMR Messages to process!");
 
-            ready_live_thread.join().expect("Thread Panicked!");
+            loop {
+                let msg = hw_xapp.app_rx.recv();
+                if let Err(e) = msg {
+                    log::error!("Error {e} Receiving Message from RMR.");
+                    break;
+                }
+                let mut msg = msg.unwrap();
 
+                let client = hw_xapp.xapp.get_rmr_client();
+                let client = client.lock().unwrap();
+
+                let msgtype = msg.get_msgtype();
+                log::trace!("Got message with Id: {msgtype}, handling message.");
+                let handler_result = match msgtype {
+                    RIC_HEALTH_CHECK_REQ => handle_ric_health_check_request(&mut msg, &*client),
+                    12050 => rmr_message_handler_noop(&mut msg, &*client),
+                    _ => {
+                        log::warn!("Received unhandled message type: {msgtype}");
+                        Err(RMRError)
+                    }
+                };
+                drop(client);
+
+                log::trace!("Incrementing default counter 'rmr_rx_messages'");
+                hw_xapp.xapp.increment_rmr_rx_messages(msgtype);
+
+                if handler_result.is_err() {
+                    log::error!("Error in handler: {}", handler_result.err().unwrap());
+                    break;
+                }
+
+                msg.free();
+            }
+            hw_xapp.xapp.stop();
             break;
         }
     }

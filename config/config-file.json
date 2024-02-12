@@ -1,13 +1,13 @@
 {
     "name": "hw-rust",
-    "version": "0.2.0",
+    "version": "0.3.0-dev",
     "containers": [
         {
             "name": "hw-rust",
             "image": {
                 "registry": "nexus3.o-ran-sc.org:10002",
                 "name": "o-ran-sc/ric-app-hw-rust",
-                "tag": "0.2.0"
+                "tag": "0.3.0-dev"
             }
         }
     ],
