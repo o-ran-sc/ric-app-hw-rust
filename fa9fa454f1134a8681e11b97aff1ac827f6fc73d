@@ -1,0 +1,8 @@
+Verified+1: ORAN Required GHA <releng+oran.required.gha@linuxfoundation.org>
+Verified+1: ORAN Jobbuilder <releng+oran-jobbuilder@linuxfoundation.org>
+Code-Review+2: SUNIL SINGH <singh.sunil@hcl.com>
+Submitted-by: SUNIL SINGH <singh.sunil@hcl.com>
+Submitted-at: Thu, 20 Jun 2024 10:50:56 +0000
+Reviewed-on: https://gerrit.o-ran-sc.org/r/c/ric-app/hw-rust/+/12209
+Project: ric-app/hw-rust
+Branch: refs/heads/master
