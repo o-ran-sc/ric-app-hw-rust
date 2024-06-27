@@ -1,11 +1,11 @@
 ---
 distribution_type: container
-container_release_tag: 0.2.0
+container_release_tag: 0.3.0
 container_pull_registry: nexus3.o-ran-sc.org:10004
 container_push_registry: nexus3.o-ran-sc.org:10002
 project: ric-app/hw-rust
-ref: 660a25a15c52e6c864ea009fe32b534a38235041
+ref: 26f24254432b52315c136a46f85edc95437be278
 containers:
     - name: ric-app-hw-rust
-      version: 0.2.0
+      version: 0.3.0
 
