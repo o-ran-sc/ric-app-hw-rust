@@ -1,0 +1,8 @@
+Verified+1: ORAN Required GHA <releng+oran.required.gha@linuxfoundation.org>
+Verified+1: ORAN Jobbuilder <releng+oran-jobbuilder@linuxfoundation.org>
+Code-Review+2: Abhijit Gadgil <gabhijit@iitbombay.org>
+Submitted-by: Abhijit Gadgil <gabhijit@iitbombay.org>
+Submitted-at: Thu, 27 Jun 2024 14:24:10 +0000
+Reviewed-on: https://gerrit.o-ran-sc.org/r/c/ric-app/hw-rust/+/12972
+Project: ric-app/hw-rust
+Branch: refs/heads/master
