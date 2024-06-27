@@ -1,6 +1,6 @@
 [package]
 name = "hw-rust"
-version = "0.3.0-dev"
+version = "0.3.0"
 edition = "2018"
 description = "A Hello World Rust xApp using the Xapp Rust SDK (xapp-frame-rust) from ORAN SC."
 readme = "README.md"
